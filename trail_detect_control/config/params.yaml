@@ -1,0 +1,41 @@
+topic:
+  image_topic: "/axis/image_raw/compressed"
+  imu_topic: "/imu/angular_velocity"
+  speed_feedback_topic: "/e100/speed_feedback"
+  steer_feedback_topic: "/e100/steer_feedback"
+
+  vis_topic: "/vis_result"
+  points_topic: "/points3d"
+  path_topic : "/rs_path"
+
+fisheye_params:
+  intrinsic_matrix: [561.69, 0.0, 944.62, 0.0, 562.83, 549.53, 0.0, 0.0, 1.0]
+  distortion_coeffs: [-0.020368584752305338, 0.005757886906715499, -0.0033249471795029164, 0.00010550159530417938]
+  rot_vec: [1.55714067, 1.6136757, -0.91446259]
+  trans_vec: [-0.01774497, 0.67593043, -0.3108007]
+
+vehicle_params:
+  r_wheel: 0.24
+  hitch_height: 0.272
+  front_hitch_length: 0.69
+  trailer_length: 1.68
+  trailer_width: 0.9
+  rear_hitch_length: 0.5
+  rear_height: 0.3
+  rear_hitch_height: 0.25
+
+yolov8_pose:
+  trt_file: "/home/tongyao/tensorrt-alpha/data/yolov8-pose/best-384.trt"
+  size_w: 640
+  size_h: 384
+  src_w: 1920
+  src_h: 1080
+  conf_thresh: 0.5
+  iou_thresh: 0.7
+
+kf_tracker:
+  std_weight_position: 0.033
+  std_weight_velocity: 0.004
+  std_weight_mea_detect: 0.05
+  std_weight_mea_LK: 0.1
+  std_weight_mea_3D: 0.1

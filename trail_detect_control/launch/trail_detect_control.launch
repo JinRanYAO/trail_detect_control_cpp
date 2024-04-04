@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="trail_detect_control" type="trail_detect_control_node" name="trail_detect_control_node" output="screen">
+        <rosparam file="$(find trail_detect_control)/config/params.yaml" command="load"/>
+    </node>
+
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find trail_detect_control)/rviz/trail.rviz" /> -->
+</launch>

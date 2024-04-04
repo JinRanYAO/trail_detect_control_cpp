@@ -1,0 +1,5 @@
+std_msgs/Header header
+bool is_auto_drive
+bool is_emergency_stop
+bool is_start_button_on
+bool is_stop_button_on
