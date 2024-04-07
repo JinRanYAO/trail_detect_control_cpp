@@ -89,11 +89,11 @@ void steerCallback(const cyber_msgs::VehicleSteerFeedbackConstPtr& steer_msg);
 
 void filterCallback(const ros::TimerEvent&);
 
-cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat> points);
-void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, const tf::StampedTransform last_pos, const tf::StampedTransform now_pos);
+cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Mat>& points);
+void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos);
 
 void pose_publish();
-cv::Mat path_publish(cv::Mat image);
+cv::Mat path_publish(const cv::Mat& image);
 void points_publish();
 
 int main(int argc, char** argv){
@@ -239,14 +239,14 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
     {
         if (trackers_init[i] == true)
         {
-            keypoints_cv.push_back(cv::Point2d(means[i](0), means[i](1)));
+            keypoints_cv.emplace_back(cv::Point2d(means[i](0), means[i](1)));
         }
         
     }
     // for (const auto &point: points)
     // {
     //     std::cout << "point: " << point << std::endl;
-    //     keypoints_cv.push_back(cv::Point2d(point.at<double>(0, 1), point.at<double>(0, 2)));
+    //     keypoints_cv.emplace_back(cv::Point2d(point.at<double>(0, 1), point.at<double>(0, 2)));
     // }
     cv::Mat keypoints(keypoints_cv);
     std::vector<cv::Point2d> undistort_points_cv;
@@ -327,7 +327,7 @@ void filterCallback(const ros::TimerEvent&){
     pose_publish();
 }
 
-cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat> points){
+cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Mat>& points){
     // cv::Mat image_copy = image.clone(); 
     double w = box.at<double>(0, 2) - box.at<double>(0, 0);
     double h = box.at<double>(0, 3) - box.at<double>(0, 1);
@@ -373,7 +373,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     //     std::vector<cv::Point2f> good_points;
     //     for (size_t i = 0; i < status.size(); i++) {
     //         if (status[i]) {
-    //             good_points.push_back(curr_keypoints_LK[i]);
+    //             good_points.emplace_back(curr_keypoints_LK[i]);
     //         }
     //     }
     //     for (size_t i = 0; i < std::min((int)good_points.size(), 3); i++)
@@ -393,7 +393,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     //     keypoints_3D_cam.reserve(keypoints_3D_transformed.cols());
     //     for (int i = 0; i < keypoints_3D_transformed.cols(); ++i)
     //     {
-    //         keypoints_3D_cam.push_back(cv::Point3d(keypoints_3D_transformed(0, i), keypoints_3D_transformed(1, i), keypoints_3D_transformed(2, i)));
+    //         keypoints_3D_cam.emplace_back(cv::Point3d(keypoints_3D_transformed(0, i), keypoints_3D_transformed(1, i), keypoints_3D_transformed(2, i)));
     //     }
     //     std::vector<cv::Point2d> keypoints_2D_cam;
     //     cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
@@ -423,7 +423,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     // return image_copy;
 }
 
-void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, const tf::StampedTransform last_pos, const tf::StampedTransform now_pos){
+void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos){
     Eigen::Matrix4d T_cw_last = geo_to_eigen(last_pos).inverse();
     T_cw_now = geo_to_eigen(now_pos).inverse();
 
@@ -498,7 +498,7 @@ void pose_publish(){
     pose_broadcaster_ptr->sendTransform(tf::StampedTransform(cam_transform, ros::Time::now(), "base_link", "camera_link"));
 }
 
-cv::Mat path_publish(const cv::Mat image){
+cv::Mat path_publish(const cv::Mat& image){
     cv::Mat image_copy = image.clone();
     nav_msgs::Path path;
     path.header.frame_id = "world";
@@ -519,7 +519,7 @@ cv::Mat path_publish(const cv::Mat image){
         pose.pose.orientation.y = q.y;
         pose.pose.orientation.z = q.z;
 
-        path.poses.push_back(pose);
+        path.poses.emplace_back(pose);
 
         geometry_msgs::PointStamped world_point, base_link_point;
         world_point.header.frame_id = "world";
@@ -612,9 +612,9 @@ void points_publish(){
     hitch.color.g = 0.0;
     hitch.color.b = 1.0;
 
-    points_vis.markers.push_back(right);
-    points_vis.markers.push_back(left);
-    points_vis.markers.push_back(hitch);
+    points_vis.markers.emplace_back(right);
+    points_vis.markers.emplace_back(left);
+    points_vis.markers.emplace_back(hitch);
 
     points_pub.publish(points_vis);
 }

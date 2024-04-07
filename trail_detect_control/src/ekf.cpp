@@ -1,6 +1,6 @@
 #include "ekf.h"
 
-void EKF::measureUpdate(Eigen::Vector3d &Z_mea, const Eigen::Matrix3d &R_mea, const double time)
+void EKF::measureUpdate(Eigen::Vector3d &Z_mea, const Eigen::Matrix3d &R_mea, const double& time)
 {
     double dt = time - time_now;
     time_now = time;
@@ -25,7 +25,7 @@ void EKF::measureUpdate(Eigen::Vector3d &Z_mea, const Eigen::Matrix3d &R_mea, co
 
 }
 
-void EKF::velStateUpdate(const Eigen::Vector2d &Z_vel, const Eigen::Matrix2d &R_vel, const double time)
+void EKF::velStateUpdate(const Eigen::Vector2d &Z_vel, const Eigen::Matrix2d &R_vel, const double& time)
 {
     double dt = time - time_now;
     time_now = time;
@@ -48,14 +48,14 @@ void EKF::velStateUpdate(const Eigen::Vector2d &Z_vel, const Eigen::Matrix2d &R_
     P = (I - K * H) * P;
 }
 
-void EKF::readX(double time)
+void EKF::readX(double& time)
 {
     double dt = time - time_now;
     time_now = time;
     statePrediction(dt);
 }
 
-void EKF::statePrediction(double dt)
+void EKF::statePrediction(double& dt)
 {
     double x = X(0);
     double y = X(1);

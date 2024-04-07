@@ -18,7 +18,7 @@ KalmanFilter::KalmanFilter(const double& std_position, const double& std_velocit
     std_weight_mea_3D = std_mea_3D;
 }
 
-std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::initiate(const Eigen::Vector2d measurement, const double w, const double h){
+std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::initiate(const Eigen::Vector2d& measurement, const double& w, const double& h){
     Eigen::Vector2d mean_pos = measurement;
     Eigen::Vector2d mean_vel = Eigen::Vector2d::Zero();
     Eigen::Vector4d mean = Eigen::Vector4d(2 * ndim);
@@ -29,7 +29,7 @@ std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::initiate(const Eigen:
     return std::make_tuple(mean, covariance);
 }
 
-std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::predict(const Eigen::Vector4d mean, const Eigen::Matrix4d covariance, const double w, const double h){
+std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::predict(const Eigen::Vector4d& mean, const Eigen::Matrix4d& covariance, const double& w, const double& h){
     Eigen::Vector2d std_pos(std_weight_position * w, std_weight_position * h);
     Eigen::Vector2d std_vel(std_weight_velocity * w, std_weight_velocity * h);
     Eigen::Vector4d std_vec;
@@ -40,7 +40,7 @@ std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::predict(const Eigen::
     return std::make_tuple(pre_mean, pre_covariance);
 }
 
-std::tuple<Eigen::Vector2d, Eigen::Matrix2d> KalmanFilter::project(const Eigen::Vector4d mean, const Eigen::Matrix4d covariance, const double w, const double h, const std::string mea_type) {
+std::tuple<Eigen::Vector2d, Eigen::Matrix2d> KalmanFilter::project(const Eigen::Vector4d& mean, const Eigen::Matrix4d& covariance, const double& w, const double& h, const std::string& mea_type) {
     double std_weight_mea;
     if (mea_type == "detect") {
         std_weight_mea = std_weight_mea_detect;
@@ -56,7 +56,7 @@ std::tuple<Eigen::Vector2d, Eigen::Matrix2d> KalmanFilter::project(const Eigen::
     return std::make_tuple(pro_mean, pro_covariance);
 }
 
-std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::update(const Eigen::Vector4d mean, const Eigen::Matrix4d covariance, const Eigen::Vector2d measurement, const double w, const double h, const std::string mea_type) {
+std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::update(const Eigen::Vector4d& mean, const Eigen::Matrix4d& covariance, const Eigen::Vector2d& measurement, const double& w, const double& h, const std::string& mea_type) {
     Eigen::Vector2d pro_mean;
     Eigen::Matrix2d pro_cov;
     std::tie(pro_mean, pro_cov) = project(mean, covariance, w, h, mea_type);
