@@ -54,6 +54,13 @@ Eigen::Vector3d rot_vec, trans_vec;
 cv::Mat intrinsic_matrix_cv(3, 3, CV_64F), distortion_coeffs_cv(4, 1, CV_64F), rot_vec_cv(3, 1, CV_64F), trans_vec_cv(3, 1, CV_64F);
 double r_wheel, hitch_height, front_hitch_length, trailer_length, trailer_width, rear_hitch_length, rear_height, rear_hitch_height;
 
+tf::Transform cam_transform;
+cv::Mat rvec_m;
+Eigen::Matrix3d rvec_m_eigen;
+tf::Matrix3x3 tf3d;
+Eigen::Vector3d cam_t;
+tf::Quaternion tfqt;
+
 double std_position, std_velocity, std_mea_detect, std_mea_LK, std_mea_3D;
 
 double curr_yaw = 0.0;
@@ -190,6 +197,14 @@ int main(int argc, char** argv){
     world_transform.transform.rotation.w = 1.0;
     world_broadcaster.sendTransform(world_transform);
 
+    cv::Rodrigues(rot_vec_cv, rvec_m);
+    cv::cv2eigen(rvec_m, rvec_m_eigen);
+    tf::matrixEigenToTF(rvec_m_eigen.transpose(), tf3d);
+    cam_t = -rvec_m_eigen.transpose() * trans_vec;
+    cam_transform.setOrigin(tf::Vector3(cam_t(0), cam_t(1), cam_t(2)));
+    tf3d.getRotation(tfqt);
+    cam_transform.setRotation(tfqt);
+
     vis_pub = nh.advertise<sensor_msgs::Image>(vis_topic, 10);
     points_pub = nh.advertise<visualization_msgs::MarkerArray>(points_topic, 10);
     path_pub = nh.advertise<nav_msgs::Path>(path_topic, 1);
@@ -318,7 +333,8 @@ void speedCallback(const cyber_msgs::VehicleSpeedFeedbackConstPtr& speed_msg){
 }
 
 void steerCallback(const cyber_msgs::VehicleSteerFeedbackConstPtr& steer_msg){
-    ekf_pose_ptr->steer_angle = - (steer_msg->steer_0p1d - 40) / 10 * 0.0625 * M_PI / 180.0;
+    // ekf_pose_ptr->steer_angle = - (steer_msg->steer_0p1d - 40) / 10 * 0.0625 * M_PI / 180.0;
+    ekf_pose_ptr->steer_angle = - (steer_msg->steer_0p1d - 40) * 0.00003472 * M_PI;
 }
 
 void filterCallback(const ros::TimerEvent&){
@@ -431,8 +447,8 @@ void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, co
     Eigen::Matrix<double, 3, 4> projMatNow = T_cw_now.block<3, 4>(0, 0);
     // std::cout << "last_keypoints: " << last_keypoints << std::endl;
     // std::cout << "now_keypoints: " << now_keypoints << std::endl;
-    cv::Mat n_last_keypoints = pixel2cam(last_keypoints);
-    cv::Mat n_now_keypoints = pixel2cam(now_keypoints);
+    // cv::Mat n_last_keypoints = pixel2cam(last_keypoints);
+    // cv::Mat n_now_keypoints = pixel2cam(now_keypoints);
 
     if (first_leastsq == true)
     {
@@ -449,7 +465,7 @@ void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, co
     cv::cv2eigen(now_keypoints, now_keypoints_eigen);
 
     double t1 = ros::Time::now().toSec();
-    if (n_last_keypoints.rows==3 && n_now_keypoints.rows==3)
+    if (last_keypoints.rows==3 && now_keypoints.rows==3)
     {
         std::tie(keypoints_3D_sq, lq_cost) = compute_keypoint3d(last_keypoints_eigen, now_keypoints_eigen, T_cw_last, T_cw_now, intrinsic_matrix, keypoints_3D_guess);
     } else
@@ -482,19 +498,6 @@ void pose_publish(){
     base_q.setRPY(0, 0, ekf_pose_ptr->X(2));
     base_transform.setRotation(base_q);
     pose_broadcaster_ptr->sendTransform(tf::StampedTransform(base_transform, ros::Time::now(), "world", "base_link"));
-
-    tf::Transform cam_transform;
-    cv::Mat rvec_m;
-    cv::Rodrigues(rot_vec_cv, rvec_m);
-    Eigen::Matrix3d rvec_m_eigen;
-    cv::cv2eigen(rvec_m, rvec_m_eigen);
-    tf::Matrix3x3 tf3d;
-    tf::matrixEigenToTF(rvec_m_eigen.transpose(), tf3d);
-    Eigen::Vector3d cam_t = -rvec_m_eigen.transpose() * trans_vec;
-    cam_transform.setOrigin(tf::Vector3(cam_t(0), cam_t(1), cam_t(2)));
-    tf::Quaternion tfqt;
-    tf3d.getRotation(tfqt);
-    cam_transform.setRotation(tfqt);
     pose_broadcaster_ptr->sendTransform(tf::StampedTransform(cam_transform, ros::Time::now(), "base_link", "camera_link"));
 }
 
