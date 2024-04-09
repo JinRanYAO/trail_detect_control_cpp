@@ -6,7 +6,7 @@ struct State {
     double x, y, yaw;
 };
 
-double normalizeAngle(double angle) {
+inline double normalizeAngle(double angle) {
     while (angle > M_PI) angle -= 2 * M_PI;
     while (angle <= -M_PI) angle += 2 * M_PI;
     return angle;
@@ -32,7 +32,7 @@ std::vector<State> planPath(const State& start, const State& goal, const double 
         pose.x = start.x;
         pose.y = start.y;
         pose.yaw = normalizeAngle(start.yaw + turn_angle * fraction);
-        path.push_back(pose);
+        path.emplace_back(pose);
     }
 
     // 连接直线路径点
@@ -43,11 +43,11 @@ std::vector<State> planPath(const State& start, const State& goal, const double 
         pose.x = start.x + fraction * direct_distance * std::cos(start_to_goal_yaw);
         pose.y = start.y + fraction * direct_distance * std::sin(start_to_goal_yaw);
         pose.yaw = start_to_goal_yaw; // 直行时保持转向后的朝向不变
-        path.push_back(pose);
+        path.emplace_back(pose);
     }
 
     // 最后，将目标点作为路径的最后一个点
-    path.push_back(goal);
+    path.emplace_back(goal);
 
     return path;
 }

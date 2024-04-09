@@ -20,11 +20,11 @@ public:
     }
     ~EKF(){}
 
-    void measureUpdate(Eigen::Vector3d &Z_mea, const Eigen::Matrix3d &R_mea, const double time);
+    void measureUpdate(Eigen::Vector3d &Z_mea, const Eigen::Matrix3d &R_mea, const double& time);
 
-    void velStateUpdate(const Eigen::Vector2d &Z_vel, const Eigen::Matrix2d &R_vel, const double time);
+    void velStateUpdate(const Eigen::Vector2d &Z_vel, const Eigen::Matrix2d &R_vel, const double& time);
 
-    void readX(double time);
+    void readX(double& time);
 
     Eigen::VectorXd X;
     Eigen::MatrixXd P;
@@ -34,7 +34,7 @@ public:
 
 private:
     double time_now;
-    void statePrediction(double dt);
+    void statePrediction(double& dt);
 };
 
 #endif

@@ -139,7 +139,7 @@ std::tuple<cv::Mat, cv::Mat, std::vector<cv::Mat>> YOLOv8Pose::showAndSave(const
                 point.at<double>(0, 1) = (double)pkpt[pi * 3 + 0];
                 point.at<double>(0, 2) = (double)pkpt[pi * 3 + 1];
                 point.at<double>(0, 3) = (double)conf;
-                points.push_back(point);
+                points.emplace_back(point);
                 cv::circle(imgsBatch[bi], cv::Size2i(int(pkpt[pi * 3 + 0]), int(pkpt[pi * 3 + 1])), 5, m_kpt_color[pi], -1, cv::LINE_AA);
             }
             

@@ -54,6 +54,13 @@ Eigen::Vector3d rot_vec, trans_vec;
 cv::Mat intrinsic_matrix_cv(3, 3, CV_64F), distortion_coeffs_cv(4, 1, CV_64F), rot_vec_cv(3, 1, CV_64F), trans_vec_cv(3, 1, CV_64F);
 double r_wheel, hitch_height, front_hitch_length, trailer_length, trailer_width, rear_hitch_length, rear_height, rear_hitch_height;
 
+tf::Transform cam_transform;
+cv::Mat rvec_m;
+Eigen::Matrix3d rvec_m_eigen;
+tf::Matrix3x3 tf3d;
+Eigen::Vector3d cam_t;
+tf::Quaternion tfqt;
+
 double std_position, std_velocity, std_mea_detect, std_mea_LK, std_mea_3D;
 
 double curr_yaw = 0.0;
@@ -94,11 +101,11 @@ void steerCallback(const cyber_msgs::VehicleSteerFeedbackConstPtr& steer_msg);
 
 void filterCallback(const ros::TimerEvent&);
 
-cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat> points);
-void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, const tf::StampedTransform last_pos, const tf::StampedTransform now_pos);
+cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Mat>& points);
+void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos);
 
 void pose_publish();
-cv::Mat path_publish(cv::Mat image);
+cv::Mat path_publish(const cv::Mat& image);
 void points_publish();
 
 int main(int argc, char** argv){
@@ -195,6 +202,14 @@ int main(int argc, char** argv){
     world_transform.transform.rotation.w = 1.0;
     world_broadcaster.sendTransform(world_transform);
 
+    cv::Rodrigues(rot_vec_cv, rvec_m);
+    cv::cv2eigen(rvec_m, rvec_m_eigen);
+    tf::matrixEigenToTF(rvec_m_eigen.transpose(), tf3d);
+    cam_t = -rvec_m_eigen.transpose() * trans_vec;
+    cam_transform.setOrigin(tf::Vector3(cam_t(0), cam_t(1), cam_t(2)));
+    tf3d.getRotation(tfqt);
+    cam_transform.setRotation(tfqt);
+
     vis_pub = nh.advertise<sensor_msgs::Image>(vis_topic, 10);
     points_pub = nh.advertise<visualization_msgs::MarkerArray>(points_topic, 10);
     path_pub = nh.advertise<nav_msgs::Path>(path_topic, 1);
@@ -247,14 +262,14 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
     {
         if (trackers_init[i] == true)
         {
-            keypoints_cv.push_back(cv::Point2d(means[i](0), means[i](1)));
+            keypoints_cv.emplace_back(cv::Point2d(means[i](0), means[i](1)));
         }
         
     }
     // for (const auto &point: points)
     // {
     //     std::cout << "point: " << point << std::endl;
-    //     keypoints_cv.push_back(cv::Point2d(point.at<double>(0, 1), point.at<double>(0, 2)));
+    //     keypoints_cv.emplace_back(cv::Point2d(point.at<double>(0, 1), point.at<double>(0, 2)));
     // }
     cv::Mat keypoints(keypoints_cv);
     std::vector<cv::Point2d> undistort_points_cv;
@@ -326,7 +341,8 @@ void speedCallback(const cyber_msgs::VehicleSpeedFeedbackConstPtr& speed_msg){
 }
 
 void steerCallback(const cyber_msgs::VehicleSteerFeedbackConstPtr& steer_msg){
-    ekf_pose_ptr->steer_angle = - (steer_msg->steer_0p1d - 40) / 10 * 0.0625 * M_PI / 180.0;
+    // ekf_pose_ptr->steer_angle = - (steer_msg->steer_0p1d - 40) / 10 * 0.0625 * M_PI / 180.0;
+    ekf_pose_ptr->steer_angle = - (steer_msg->steer_0p1d - 40) * 0.00003472 * M_PI;
 }
 
 void filterCallback(const ros::TimerEvent&){
@@ -335,10 +351,17 @@ void filterCallback(const ros::TimerEvent&){
     pose_publish();
 }
 
+<<<<<<< HEAD
 cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat> points){
     cv::Mat image_copy = image.clone(); 
     double w = scale_w * (box.at<double>(0, 2) - box.at<double>(0, 0));
     double h = scale_h * (box.at<double>(0, 3) - box.at<double>(0, 1));
+=======
+cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Mat>& points){
+    // cv::Mat image_copy = image.clone(); 
+    double w = box.at<double>(0, 2) - box.at<double>(0, 0);
+    double h = box.at<double>(0, 3) - box.at<double>(0, 1);
+>>>>>>> 6949a747dbd96167df806a607c6fcd9e717816e5
     for (const auto& point : points)
     {
         int kpi = (int)point.at<double>(0, 0);
@@ -381,7 +404,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     //     std::vector<cv::Point2f> good_points;
     //     for (size_t i = 0; i < status.size(); i++) {
     //         if (status[i]) {
-    //             good_points.push_back(curr_keypoints_LK[i]);
+    //             good_points.emplace_back(curr_keypoints_LK[i]);
     //         }
     //     }
     //     for (size_t i = 0; i < std::min((int)good_points.size(), 3); i++)
@@ -401,7 +424,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     //     keypoints_3D_cam.reserve(keypoints_3D_transformed.cols());
     //     for (int i = 0; i < keypoints_3D_transformed.cols(); ++i)
     //     {
-    //         keypoints_3D_cam.push_back(cv::Point3d(keypoints_3D_transformed(0, i), keypoints_3D_transformed(1, i), keypoints_3D_transformed(2, i)));
+    //         keypoints_3D_cam.emplace_back(cv::Point3d(keypoints_3D_transformed(0, i), keypoints_3D_transformed(1, i), keypoints_3D_transformed(2, i)));
     //     }
     //     std::vector<cv::Point2d> keypoints_2D_cam;
     //     cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
@@ -431,7 +454,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     return image_copy;
 }
 
-void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, const tf::StampedTransform last_pos, const tf::StampedTransform now_pos){
+void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos){
     Eigen::Matrix4d T_cw_last = geo_to_eigen(last_pos).inverse();
     T_cw_now = geo_to_eigen(now_pos).inverse();
 
@@ -439,8 +462,8 @@ void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, cons
     Eigen::Matrix<double, 3, 4> projMatNow = T_cw_now.block<3, 4>(0, 0);
     // std::cout << "last_keypoints: " << last_keypoints << std::endl;
     // std::cout << "now_keypoints: " << now_keypoints << std::endl;
-    cv::Mat n_last_keypoints = pixel2cam(last_keypoints);
-    cv::Mat n_now_keypoints = pixel2cam(now_keypoints);
+    // cv::Mat n_last_keypoints = pixel2cam(last_keypoints);
+    // cv::Mat n_now_keypoints = pixel2cam(now_keypoints);
 
     if (first_leastsq == true)
     {
@@ -457,7 +480,7 @@ void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, cons
     cv::cv2eigen(now_keypoints, now_keypoints_eigen);
 
     double t1 = ros::Time::now().toSec();
-    if (n_last_keypoints.rows==3 && n_now_keypoints.rows==3)
+    if (last_keypoints.rows==3 && now_keypoints.rows==3)
     {
         std::tie(keypoints_3D_sq, lq_cost) = compute_keypoint3d(last_keypoints_eigen, now_keypoints_eigen, T_cw_last, T_cw_now, intrinsic_matrix, keypoints_3D_guess);
     } else
@@ -490,23 +513,10 @@ void pose_publish(){
     base_q.setRPY(0, 0, ekf_pose_ptr->X(2));
     base_transform.setRotation(base_q);
     pose_broadcaster_ptr->sendTransform(tf::StampedTransform(base_transform, ros::Time::now(), "world", "base_link"));
-
-    tf::Transform cam_transform;
-    cv::Mat rvec_m;
-    cv::Rodrigues(rot_vec_cv, rvec_m);
-    Eigen::Matrix3d rvec_m_eigen;
-    cv::cv2eigen(rvec_m, rvec_m_eigen);
-    tf::Matrix3x3 tf3d;
-    tf::matrixEigenToTF(rvec_m_eigen.transpose(), tf3d);
-    Eigen::Vector3d cam_t = -rvec_m_eigen.transpose() * trans_vec;
-    cam_transform.setOrigin(tf::Vector3(cam_t(0), cam_t(1), cam_t(2)));
-    tf::Quaternion tfqt;
-    tf3d.getRotation(tfqt);
-    cam_transform.setRotation(tfqt);
     pose_broadcaster_ptr->sendTransform(tf::StampedTransform(cam_transform, ros::Time::now(), "base_link", "camera_link"));
 }
 
-cv::Mat path_publish(const cv::Mat image){
+cv::Mat path_publish(const cv::Mat& image){
     cv::Mat image_copy = image.clone();
     nav_msgs::Path path;
     path.header.frame_id = "world";
@@ -527,7 +537,7 @@ cv::Mat path_publish(const cv::Mat image){
         pose.pose.orientation.y = q.y;
         pose.pose.orientation.z = q.z;
 
-        path.poses.push_back(pose);
+        path.poses.emplace_back(pose);
 
         geometry_msgs::PointStamped world_point, base_link_point;
         world_point.header.frame_id = "world";
@@ -620,9 +630,9 @@ void points_publish(){
     hitch.color.g = 0.0;
     hitch.color.b = 1.0;
 
-    points_vis.markers.push_back(right);
-    points_vis.markers.push_back(left);
-    points_vis.markers.push_back(hitch);
+    points_vis.markers.emplace_back(right);
+    points_vis.markers.emplace_back(left);
+    points_vis.markers.emplace_back(hitch);
 
     points_pub.publish(points_vis);
 }
