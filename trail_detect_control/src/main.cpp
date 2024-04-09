@@ -59,6 +59,11 @@ double std_position, std_velocity, std_mea_detect, std_mea_LK, std_mea_3D;
 double curr_yaw = 0.0;
 double velocity = 0.0;
 
+cv::Mat img_sub;
+cv::Mat img_sub_resize;
+int size_w, size_h;
+double scale_w, scale_h;
+
 bool two_image = false;
 bool first_leastsq = false;
 bool point3d_init = false;
@@ -106,7 +111,7 @@ int main(int argc, char** argv){
     std::string vis_topic, points_topic, path_topic;
 
     std::string trt_file;
-    int size_w, size_h, src_w, src_h;
+    double src_w, src_h;
     float conf_thresh, iou_thresh;
 
     std::vector<double> intrinsic_params, distortion_params, rot_params, trans_params;
@@ -123,8 +128,8 @@ int main(int argc, char** argv){
     pnh.param<std::string>("yolov8_pose/trt_file", trt_file, "/home/tongyao/tensorrt-alpha/data/yolov8-pose/best-384.trt");
     pnh.param<int>("yolov8_pose/size_w", size_w, 640);
     pnh.param<int>("yolov8_pose/size_h", size_h, 384);
-    pnh.param<int>("yolov8_pose/src_w", src_w, 1920);
-    pnh.param<int>("yolov8_pose/src_h", src_h, 1080);
+    pnh.param<double>("yolov8_pose/src_w", src_w, 1920);
+    pnh.param<double>("yolov8_pose/src_h", src_h, 1080);
     pnh.param<float>("yolov8_pose/conf_thresh", conf_thresh, 0.5);
     pnh.param<float>("yolov8_pose/iou_thresh", iou_thresh, 0.7);
 
@@ -202,10 +207,12 @@ int main(int argc, char** argv){
     EKF ekf_pose;
     ekf_pose_ptr = &ekf_pose;
 
-    setYolov8Params(param, size_w, size_h, src_w, src_h, conf_thresh, iou_thresh);
+    setYolov8Params(param, size_w, size_h, conf_thresh, iou_thresh);
+    scale_w = src_w / size_w;
+    scale_h = src_h / size_h;
     KeypointDetector detector(param, trt_file);
     detector_ptr = &detector;
-    cv::Mat test = cv::Mat::ones(1920, 1080, CV_8UC3);
+    cv::Mat test = cv::Mat::ones(size_w, size_h, CV_8UC3);
     cv::Mat result_img;
     cv::Mat box;
     std::vector<cv::Mat> points;
@@ -226,12 +233,13 @@ int main(int argc, char** argv){
 }
 
 void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
-    cv::Mat image = cv::imdecode(cv::Mat(img_msg->data), 1);
+    img_sub = cv::imdecode(cv::Mat(img_msg->data), 1);
+    cv::resize(img_sub, img_sub_resize, cv::Size(size_w, size_h));
     cv::Mat result_img;
     cv::Mat box;
     std::vector<cv::Mat> points;
-    std::tie(result_img, box, points) = detector_ptr->inference(image, param);
-    result_img = track(image, box, points);
+    std::tie(result_img, box, points) = detector_ptr->inference(img_sub_resize, param);
+    result_img = track(img_sub, box, points);
 
     tf_listener_ptr->lookupTransform("world", "camera_link", ros::Time(0), now_pos);
     std::vector<cv::Point2d> keypoints_cv;
@@ -328,14 +336,14 @@ void filterCallback(const ros::TimerEvent&){
 }
 
 cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat> points){
-    // cv::Mat image_copy = image.clone(); 
-    double w = box.at<double>(0, 2) - box.at<double>(0, 0);
-    double h = box.at<double>(0, 3) - box.at<double>(0, 1);
+    cv::Mat image_copy = image.clone(); 
+    double w = scale_w * (box.at<double>(0, 2) - box.at<double>(0, 0));
+    double h = scale_h * (box.at<double>(0, 3) - box.at<double>(0, 1));
     for (const auto& point : points)
     {
         int kpi = (int)point.at<double>(0, 0);
-        double x = point.at<double>(0, 1);
-        double y = point.at<double>(0, 2);
+        double x = point.at<double>(0, 1) * scale_w;
+        double y = point.at<double>(0, 2) * scale_h;
         double conf = point.at<double>(0, 3);
 
         Eigen::Vector2d mea_pos(x, y);
@@ -354,7 +362,7 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
             cv::Point point(cv::saturate_cast<int>(x), cv::saturate_cast<int>(y));
             std::tie(means[kpi], covariances[kpi]) = trackers[kpi].predict(means[kpi], covariances[kpi], w, h);
             std::tie(means[kpi], covariances[kpi]) = trackers[kpi].update(means[kpi], covariances[kpi], mea_pos, w, h, "detect");
-            // cv::circle(image_copy, point, 5, cv::Scalar(255, 255, 255), -1);
+            cv::circle(image_copy, point, 5, cv::Scalar(255, 255, 255), -1);
         }
     }
 
@@ -419,8 +427,8 @@ cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat>
     prev_image_gray = curr_image_gray;
     prev_flag = true;
     
-    return image;
-    // return image_copy;
+    // return image;
+    return image_copy;
 }
 
 void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, const tf::StampedTransform last_pos, const tf::StampedTransform now_pos){
@@ -457,7 +465,7 @@ void triangulate(const cv::Mat last_keypoints, const cv::Mat now_keypoints, cons
         std::tie(keypoints_3D_sq, lq_cost) = compute_keypoint3d(last_keypoints_eigen.block<2, 2>(0, 0), now_keypoints_eigen.block<2, 2>(0, 0), T_cw_last, T_cw_now, intrinsic_matrix, keypoints_3D_guess);
     }
     std::cout << "optimize time: " << ros::Time::now().toSec()-t1 << std::endl;
-    // std::cout << "keypoints_3d: " << keypoints_3D_sq << std::endl;
+    std::cout << "keypoints_3d: " << keypoints_3D_sq << std::endl;
     
     first_leastsq = true;
     if (lq_cost < lq_cost_min)

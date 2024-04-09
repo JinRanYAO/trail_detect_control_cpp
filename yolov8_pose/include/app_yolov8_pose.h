@@ -2,15 +2,15 @@
 #include "yolo.h"
 #include "yolov8_pose.h"
 
-void setYolov8Params(utils::InitParameter& param, const int &size_w, const int &size_h, const int &src_w, const int &src_h, const float &conf_thresh, const float &iou_thresh)
+void setYolov8Params(utils::InitParameter& param, const int &size_w, const int &size_h, const float &conf_thresh, const float &iou_thresh)
 {
 	param.class_names = utils::dataSets::trail1;
 	param.num_class = 1; // for coco
 	param.batch_size = 1;
 	param.dst_h = size_h;
 	param.dst_w = size_w;
-	param.src_h = src_h;
-	param.src_w = src_w;
+	param.src_h = size_h;
+	param.src_w = size_w;
 	param.input_output_names = { "images",  "output0" };
 	param.conf_thresh = conf_thresh;
 	param.iou_thresh = iou_thresh;

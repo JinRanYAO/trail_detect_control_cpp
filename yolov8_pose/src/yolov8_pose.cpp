@@ -62,32 +62,14 @@ bool YOLOv8Pose::init(const std::vector<unsigned char>& trtFile)
     }
     CHECK(cudaMalloc(&m_output_src_device, m_param.batch_size * m_output_area * sizeof(float)));
     CHECK(cudaMalloc(&m_output_src_transpose_device, m_param.batch_size * m_output_area * sizeof(float)));
-    float a = float(m_param.dst_h) / m_param.src_h;
-    float b = float(m_param.dst_w) / m_param.src_w;
-    float scale = a < b ? a : b;
-    cv::Mat src2dst = (cv::Mat_<float>(2, 3) << scale, 0.f, (-scale * m_param.src_w + m_param.dst_w + scale - 1) * 0.5,
-        0.f, scale, (-scale * m_param.src_h + m_param.dst_h + scale - 1) * 0.5);
-    cv::Mat dst2src = cv::Mat::zeros(2, 3, CV_32FC1);
-    cv::invertAffineTransform(src2dst, dst2src);
-
-    m_dst2src.v0 = dst2src.ptr<float>(0)[0];
-    m_dst2src.v1 = dst2src.ptr<float>(0)[1];
-    m_dst2src.v2 = dst2src.ptr<float>(0)[2];
-    m_dst2src.v3 = dst2src.ptr<float>(1)[0];
-    m_dst2src.v4 = dst2src.ptr<float>(1)[1];
-    m_dst2src.v5 = dst2src.ptr<float>(1)[2];
     return true;
 }
 
 void YOLOv8Pose::preprocess(const std::vector<cv::Mat>& imgsBatch)
 {
     resizeDevice(m_param.batch_size, m_input_src_device, m_param.src_w, m_param.src_h,
-        m_input_resize_device, m_param.dst_w, m_param.dst_h, 114, m_dst2src);
-    bgr2rgbDevice(m_param.batch_size, m_input_resize_device, m_param.dst_w, m_param.dst_h,
-        m_input_rgb_device, m_param.dst_w, m_param.dst_h);
-    normDevice(m_param.batch_size, m_input_rgb_device, m_param.dst_w, m_param.dst_h,
-        m_input_norm_device, m_param.dst_w, m_param.dst_h, m_param);
-    hwc2chwDevice(m_param.batch_size, m_input_norm_device, m_param.dst_w, m_param.dst_h,
+        m_input_resize_device, m_param.dst_w, m_param.dst_h, 114, m_param.inv_scale);
+    hwc2chwDevice(m_param.batch_size, m_input_resize_device, m_param.dst_w, m_param.dst_h,
         m_input_hwc_device, m_param.dst_w, m_param.dst_h);
 }
 
@@ -126,10 +108,10 @@ std::tuple<cv::Mat, cv::Mat, std::vector<cv::Mat>> YOLOv8Pose::showAndSave(const
             float* ptr = m_output_objects_host + bi * (m_param.topK * m_output_objects_width + 1) + m_output_objects_width * i + 1;
             int label = (int)ptr[5];
             color = utils::Colors::color1[label];
-            float x_lt = m_dst2src.v0 * ptr[0] + m_dst2src.v1 * ptr[1] + m_dst2src.v2;
-            float y_lt = m_dst2src.v3 * ptr[0] + m_dst2src.v4 * ptr[1] + m_dst2src.v5;
-            float x_rb = m_dst2src.v0 * ptr[2] + m_dst2src.v1 * ptr[3] + m_dst2src.v2;
-            float y_rb = m_dst2src.v3 * ptr[2] + m_dst2src.v4 * ptr[3] + m_dst2src.v5;
+            float x_lt = ptr[0];
+            float y_lt = ptr[1];
+            float x_rb = ptr[2];
+            float y_rb = ptr[3];
             box.at<double>(0, 0) = (double)x_lt;
             box.at<double>(0, 1) = (double)y_lt;
             box.at<double>(0, 2) = (double)x_rb;
@@ -147,10 +129,8 @@ std::tuple<cv::Mat, cv::Mat, std::vector<cv::Mat>> YOLOv8Pose::showAndSave(const
             for (size_t pi = 0; pi < m_nkpts; pi++)
             {
                 float conf = pkpt[pi * 3 + 2];
-                if (conf < 0.5f)
-                    continue;
-                pkpt[pi * 3] = m_dst2src.v0 * pkpt[pi * 3] + m_dst2src.v1 * pkpt[pi * 3 + 1] + m_dst2src.v2;
-                pkpt[pi * 3 + 1] = m_dst2src.v3 * pkpt[pi * 3] + m_dst2src.v4 * pkpt[pi * 3 + 1] + m_dst2src.v5;
+                // if (conf < 0.5f)
+                //     continue;
                 if (pkpt[pi * 3] >= (float)m_param.src_w || pkpt[pi * 3] < 0 ||
                     pkpt[pi * 3 + 1] >= (float)m_param.src_h || pkpt[pi * 3 + 1] < 0)
                     continue;

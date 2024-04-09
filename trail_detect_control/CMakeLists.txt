@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(trail_detect_control)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 SET(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED COMPONENTS

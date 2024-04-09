@@ -186,7 +186,7 @@ void yolo::YOLO::copy(const std::vector<cv::Mat>& imgsBatch)
 void yolo::YOLO::preprocess(const std::vector<cv::Mat>& imgsBatch)
 {
     resizeDevice(m_param.batch_size, m_input_src_device, m_param.src_w, m_param.src_h,
-        m_input_resize_device, m_param.dst_w, m_param.dst_h, 114, m_dst2src);
+        m_input_resize_device, m_param.dst_w, m_param.dst_h, 114, m_param.inv_scale);
     bgr2rgbDevice(m_param.batch_size, m_input_resize_device, m_param.dst_w, m_param.dst_h,
         m_input_rgb_device, m_param.dst_w, m_param.dst_h);
     normDevice(m_param.batch_size, m_input_rgb_device, m_param.dst_w, m_param.dst_h,
