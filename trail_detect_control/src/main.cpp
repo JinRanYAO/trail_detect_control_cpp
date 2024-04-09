@@ -351,7 +351,7 @@ void filterCallback(const ros::TimerEvent&){
     pose_publish();
 }
 
-cv::Mat track(const cv::Mat image, const cv::Mat box, const std::vector<cv::Mat> points){
+cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Mat>& points){
     cv::Mat image_copy = image.clone(); 
     double w = scale_w * (box.at<double>(0, 2) - box.at<double>(0, 0));
     double h = scale_h * (box.at<double>(0, 3) - box.at<double>(0, 1));
