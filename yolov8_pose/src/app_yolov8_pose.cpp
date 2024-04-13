@@ -18,7 +18,7 @@ KeypointDetector::~KeypointDetector()
 
 std::tuple<cv::Mat, cv::Mat, std::vector<cv::Mat>> KeypointDetector::inference(const cv::Mat &frame, const utils::InitParameter& param){
 
-	imgs_batch.emplace_back(frame.clone());
+	imgs_batch.emplace_back(frame);
     yolov8.copy(imgs_batch);
 	utils::DeviceTimer d_t1; yolov8.preprocess(imgs_batch);  float t1 = d_t1.getUsedTime();
 	utils::DeviceTimer d_t2; yolov8.infer();				  float t2 = d_t2.getUsedTime();

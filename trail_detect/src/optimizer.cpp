@@ -76,7 +76,9 @@ struct Residuals3
         residuals[9] = P3(p1_(2, 1)) - pr1(2, 1);
         residuals[10] = P3(p2_(2, 0)) - pr2(2, 0);
         residuals[11] = P3(p2_(2, 1)) - pr2(2, 1);
-
+        // residuals[12] = P3(0.9) - sqrt(ceres::pow((params[0] - params[2]), 2) + ceres::pow((params[1] - params[3]), 2));
+        // residuals[13] = P3(0.675) - sqrt(ceres::pow((params[0] - params[4]), 2) + ceres::pow((params[1] - params[5]), 2) + 0.0025);
+        // residuals[14] = P3(0.675) - sqrt(ceres::pow((params[2] - params[4]), 2) + ceres::pow((params[3] - params[5]), 2) + 0.0025);
         return true;
     }
 
@@ -140,6 +142,7 @@ struct Residuals2
         residuals[5] = P2(p1_(1, 1)) - pr1(1, 1);
         residuals[6] = P2(p2_(1, 0)) - pr2(1, 0);
         residuals[7] = P2(p2_(1, 1)) - pr2(1, 1);
+        // residuals[8] = P2(0.9) - sqrt(ceres::pow((params[0] - params[2]), 2) + ceres::pow((params[1] - params[3]), 2));
 
         return true;
     }
@@ -177,7 +180,7 @@ std::tuple<Eigen::Matrix<double, Eigen::Dynamic, 3>, double> compute_keypoint3d(
         options.minimizer_type = ceres::TRUST_REGION;
         options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
         options.use_nonmonotonic_steps = false;
-        options.max_num_iterations = 100;
+        options.max_num_iterations = 200;
         options.function_tolerance = 1e-6;
         options.gradient_tolerance = 1e-10;
         options.parameter_tolerance = 1e-8;
@@ -190,15 +193,15 @@ std::tuple<Eigen::Matrix<double, Eigen::Dynamic, 3>, double> compute_keypoint3d(
         problem.AddParameterBlock(guess, 6);
         problem.SetParameterLowerBound(guess, 0, -6);
         problem.SetParameterUpperBound(guess, 0, 6);
-        problem.SetParameterLowerBound(guess, 1, -12);
+        problem.SetParameterLowerBound(guess, 1, -15);
         problem.SetParameterUpperBound(guess, 1, -2);
         problem.SetParameterLowerBound(guess, 2, -6);
         problem.SetParameterUpperBound(guess, 2, 6);
-        problem.SetParameterLowerBound(guess, 3, -12);
+        problem.SetParameterLowerBound(guess, 3, -15);
         problem.SetParameterUpperBound(guess, 3, -2);
         problem.SetParameterLowerBound(guess, 4, -6);
         problem.SetParameterUpperBound(guess, 4, 6);
-        problem.SetParameterLowerBound(guess, 5, -12);
+        problem.SetParameterLowerBound(guess, 5, -15);
         problem.SetParameterUpperBound(guess, 5, -2);
         problem.AddResidualBlock(cost_function, nullptr, guess);
 
@@ -223,7 +226,7 @@ std::tuple<Eigen::Matrix<double, Eigen::Dynamic, 3>, double> compute_keypoint3d(
         options.minimizer_type = ceres::TRUST_REGION;
         options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
         options.use_nonmonotonic_steps = false;
-        options.max_num_iterations = 100;
+        options.max_num_iterations = 200;
         options.function_tolerance = 1e-6;
         options.gradient_tolerance = 1e-10;
         options.parameter_tolerance = 1e-8;
@@ -236,11 +239,11 @@ std::tuple<Eigen::Matrix<double, Eigen::Dynamic, 3>, double> compute_keypoint3d(
         problem.AddParameterBlock(guess, 4);
         problem.SetParameterLowerBound(guess, 0, -6);
         problem.SetParameterUpperBound(guess, 0, 6);
-        problem.SetParameterLowerBound(guess, 1, -12);
+        problem.SetParameterLowerBound(guess, 1, -15);
         problem.SetParameterUpperBound(guess, 1, -2);
         problem.SetParameterLowerBound(guess, 2, -6);
         problem.SetParameterUpperBound(guess, 2, 6);
-        problem.SetParameterLowerBound(guess, 3, -12);
+        problem.SetParameterLowerBound(guess, 3, -15);
         problem.SetParameterUpperBound(guess, 3, -2);
         problem.AddResidualBlock(cost_function, nullptr, guess);
 

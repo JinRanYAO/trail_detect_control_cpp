@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="trail_control" type="trail_control_node" name="trail_control_node" output="screen">
+        <rosparam file="$(find trail_control)/config/control_params.yaml" command="load"/>
+    </node>
+</launch>

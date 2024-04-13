@@ -8,6 +8,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PointStamped.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <cyber_msgs/VehicleSpeedFeedback.h>
 #include <cyber_msgs/VehicleSteerFeedback.h>
 #include <cv_bridge/cv_bridge.h>
@@ -48,6 +49,13 @@ cv::TermCriteria criteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 10, 0
 cv::Size winSize(15, 15);
 int maxLevel = 2;
 
+cv::Mat front_hitch_point(1, 2, CV_64FC2);
+std::vector<cv::Point2d> undistort_front_hitch;
+double px_error, py_error;
+std_msgs::Float64MultiArray p_error_msg;
+std_msgs::Float64MultiArray d_error_msg;
+double lq_cost;
+
 Eigen::Matrix3d intrinsic_matrix;
 Eigen::Vector4d distortion_coeffs;
 Eigen::Vector3d rot_vec, trans_vec;
@@ -75,8 +83,8 @@ bool two_image = false;
 bool first_leastsq = false;
 bool point3d_init = false;
 double lq_cost_min = 100000.0;
-cv::Mat last_keypoints;
-cv::Mat now_keypoints;
+std::vector<cv::Point2d> last_keypoints;
+std::vector<cv::Point2d> now_keypoints;
 tf::StampedTransform last_pos;
 tf::StampedTransform now_pos;
 Eigen::Matrix4d T_cw_now;
@@ -85,7 +93,7 @@ Eigen::Matrix3d keypoints_3D_sq;
 Eigen::Matrix3d keypoints_3D_save;
 Eigen::Matrix3d keypoints_3D;
 
-ros::Publisher vis_pub, points_pub, path_pub;
+ros::Publisher vis_pub, points_pub, path_pub, r_hitch_pub, f_hitch_pub;
 
 tf::TransformBroadcaster* pose_broadcaster_ptr = nullptr;
 geometry_msgs::TransformStamped pose_stamped;
@@ -102,20 +110,20 @@ void steerCallback(const cyber_msgs::VehicleSteerFeedbackConstPtr& steer_msg);
 void filterCallback(const ros::TimerEvent&);
 
 cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Mat>& points);
-void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos);
+void triangulate(const std::vector<cv::Point2d>& last_keypoints, const std::vector<cv::Point2d>& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos);
 
 void pose_publish();
 cv::Mat path_publish(const cv::Mat& image);
 void points_publish();
 
 int main(int argc, char** argv){
-    ros::init(argc, argv, "trail_detect_control_node");
+    ros::init(argc, argv, "trail_detect_node");
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
 
     std::string image_topic, imu_topic, speed_feedback_topic, steer_feedback_topic;
 
-    std::string vis_topic, points_topic, path_topic;
+    std::string vis_topic, points_topic, path_topic, r_hitch_topic, f_hitch_topic;
 
     std::string trt_file;
     double src_w, src_h;
@@ -131,6 +139,8 @@ int main(int argc, char** argv){
     pnh.param<std::string>("topic/vis_topic", vis_topic, "/vis_result");
     pnh.param<std::string>("topic/points_topic", points_topic, "/points3d");
     pnh.param<std::string>("topic/path_topic", path_topic, "/rs_path");
+    pnh.param<std::string>("topic/rear_hitch_pos_topic", r_hitch_topic, "/hitch_pos");
+    pnh.param<std::string>("topic/front_hitch_pixel_topic", f_hitch_topic, "/hitch_pixel");
 
     pnh.param<std::string>("yolov8_pose/trt_file", trt_file, "/home/tongyao/tensorrt-alpha/data/yolov8-pose/best-384.trt");
     pnh.param<int>("yolov8_pose/size_w", size_w, 640);
@@ -188,6 +198,10 @@ int main(int argc, char** argv){
         }
     }
 
+    front_hitch_point.at<double>(0, 0) = 960.00000;
+    front_hitch_point.at<double>(0, 1) = 1025.25641;
+    cv::fisheye::undistortPoints(front_hitch_point, undistort_front_hitch, intrinsic_matrix_cv, distortion_coeffs_cv, cv::noArray(), intrinsic_matrix_cv);
+
     static tf2_ros::StaticTransformBroadcaster world_broadcaster;
     geometry_msgs::TransformStamped world_transform;
     world_transform.header.stamp = ros::Time::now();
@@ -213,6 +227,8 @@ int main(int argc, char** argv){
     vis_pub = nh.advertise<sensor_msgs::Image>(vis_topic, 10);
     points_pub = nh.advertise<visualization_msgs::MarkerArray>(points_topic, 10);
     path_pub = nh.advertise<nav_msgs::Path>(path_topic, 1);
+    r_hitch_pub = nh.advertise<std_msgs::Float64MultiArray>(r_hitch_topic, 1);
+    f_hitch_pub = nh.advertise<std_msgs::Float64MultiArray>(f_hitch_topic, 1);
 
     tf::TransformBroadcaster pose_broadcaster;
     pose_broadcaster_ptr = &pose_broadcaster;
@@ -272,16 +288,16 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
     //     keypoints_cv.emplace_back(cv::Point2d(point.at<double>(0, 1), point.at<double>(0, 2)));
     // }
     cv::Mat keypoints(keypoints_cv);
-    std::vector<cv::Point2d> undistort_points_cv;
-    cv::fisheye::undistortPoints(keypoints, undistort_points_cv, intrinsic_matrix_cv, distortion_coeffs_cv, cv::noArray(), intrinsic_matrix_cv);
+    std::vector<cv::Point2d> undistort_points;
+    cv::fisheye::undistortPoints(keypoints, undistort_points, intrinsic_matrix_cv, distortion_coeffs_cv, cv::noArray(), intrinsic_matrix_cv);
 
-    cv::Mat undistort_points(static_cast<int>(undistort_points_cv.size()), 2, CV_64F);
+    // cv::Mat undistort_points(static_cast<int>(undistort_points_cv.size()), 2, CV_64F);
 
-    for (int i = 0; i < undistort_points.rows; ++i)
-    {
-        undistort_points.at<double>(i, 0) = undistort_points_cv[i].x;
-        undistort_points.at<double>(i, 1) = undistort_points_cv[i].y;
-    }
+    // for (int i = 0; i < undistort_points.rows; ++i)
+    // {
+    //     undistort_points.at<double>(i, 0) = undistort_points_cv[i].x;
+    //     undistort_points.at<double>(i, 1) = undistort_points_cv[i].y;
+    // }
 
     if (two_image == false)
     {
@@ -289,6 +305,18 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
         last_pos = now_pos;
         two_image = true;
         return;
+    }
+    
+    if (undistort_points.size() == 3)
+    {
+        px_error = undistort_front_hitch[0].x - undistort_points[2].x;
+        py_error = undistort_front_hitch[0].y - undistort_points[2].y;
+        p_error_msg.data.clear();
+        // p_error_msg.data.push_back(px_error);
+        // p_error_msg.data.push_back(py_error);
+        p_error_msg.data = {px_error, py_error};
+        f_hitch_pub.publish(p_error_msg);
+        // std::cout << "px_error: " << px_error << " py_error: " << py_error << std::endl;
     }
 
     now_keypoints = undistort_points;
@@ -306,11 +334,42 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
         double gx = keypoints_3D(2, 0);
         double gy = keypoints_3D(2, 1);
         double k_r_hitch = - (keypoints_3D(0, 0) - keypoints_3D(1, 0)) / (keypoints_3D(0, 1) - keypoints_3D(1, 1));
-        double gyaw = (k_r_hitch > 0) ? std::atan(k_r_hitch) : (std::atan(k_r_hitch) + M_PI);
+        double gyaw = (k_r_hitch > 0) ? std::atan2(k_r_hitch, 1.0) : std::atan2(-k_r_hitch, -1.0);
         State start {sx, sy, syaw};
         State goal {gx, gy, gyaw};
         // std::tie(pathxs, pathys, pathyaws) = reeds_shepp_path_planning(sx, sy, syaw, gx, gy, gyaw, 1.0);
         paths = planPath(start, goal, 1.0);
+
+        double d_x = gx + front_hitch_length * std::cos(gyaw);
+        double d_y = gy + front_hitch_length * std::sin(gyaw);
+        // geometry_msgs::PointStamped r_hitch_world_point, r_hitch_base_point;
+        // r_hitch_world_point.header.frame_id = "world";
+        // r_hitch_world_point.point.x = d_x;
+        // r_hitch_world_point.point.y = d_y;
+        // r_hitch_world_point.point.z = 0.25; 
+        // tf_listener_ptr->transformPoint("base_link", r_hitch_world_point, r_hitch_base_point);
+        // double d_yaw_error = gyaw - syaw;
+        // d_error_msg.data.clear();
+        // d_error_msg.data.push_back(r_hitch_base_point.point.x);
+        // d_error_msg.data.push_back(r_hitch_base_point.point.y);
+        // d_error_msg.data.push_back(d_yaw_error);
+        // r_hitch_pub.publish(d_error_msg);
+        // std::cout << "x_error: " << r_hitch_base_point.point.x << " y_error: " << r_hitch_base_point.point.y << std::endl;
+        // std::vector<cv::Point3d> points_to_project({ cv::Point3d(base_link_point.point.x, base_link_point.point.y, base_link_point.point.z) });
+
+        double d_x_error = d_x - ekf_pose_ptr->X(0);
+        double d_y_error = d_y - ekf_pose_ptr->X(1);
+        double d_yaw_error = gyaw - syaw;
+        d_error_msg.data.clear();
+        // d_error_msg.data.push_back(d_x_error);
+        // d_error_msg.data.push_back(d_y_error);
+        // d_error_msg.data.push_back(syaw);
+        // d_error_msg.data.push_back(d_yaw_error);
+        // d_error_msg.data.push_back(lq_cost);
+        d_error_msg.data = {d_x_error, d_y_error, syaw, d_yaw_error, lq_cost};
+        r_hitch_pub.publish(d_error_msg);
+        // std::cout << "gyaw: " << gyaw << " syaw: " << syaw << std::endl;
+        // std::cout << "x_error: " << d_x_error << " y_error: " << d_y_error << "yaw: " << syaw << " yaw_error: " << d_yaw_error << std::endl;
     }
 
     cv::Mat pub_img = path_publish(result_img);
@@ -447,7 +506,7 @@ cv::Mat track(const cv::Mat& image, const cv::Mat& box, const std::vector<cv::Ma
     return image_copy;
 }
 
-void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos){
+void triangulate(const std::vector<cv::Point2d>& last_keypoints, const std::vector<cv::Point2d>& now_keypoints, const tf::StampedTransform& last_pos, const tf::StampedTransform& now_pos){
     Eigen::Matrix4d T_cw_last = geo_to_eigen(last_pos).inverse();
     T_cw_now = geo_to_eigen(now_pos).inverse();
 
@@ -464,16 +523,28 @@ void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, co
         std::copy(guess_eigen.data(), guess_eigen.data()+6, keypoints_3D_guess);
     }   
 
-    double lq_cost;
-    Eigen::Matrix<double, Eigen::Dynamic, 2> last_keypoints_eigen;
-    last_keypoints_eigen.resize(last_keypoints.rows, 2);
-    cv::cv2eigen(last_keypoints, last_keypoints_eigen);
-    Eigen::Matrix<double, Eigen::Dynamic, 2> now_keypoints_eigen;
-    now_keypoints_eigen.resize(now_keypoints.rows, 2);
-    cv::cv2eigen(now_keypoints, now_keypoints_eigen);
+    // Eigen::Matrix<double, Eigen::Dynamic, 2> last_keypoints_eigen;
+    // last_keypoints_eigen.resize(last_keypoints.rows, 2);
+    // cv::cv2eigen(last_keypoints, last_keypoints_eigen);
+    // Eigen::Matrix<double, Eigen::Dynamic, 2> now_keypoints_eigen;
+    // now_keypoints_eigen.resize(now_keypoints.rows, 2);
+    // cv::cv2eigen(now_keypoints, now_keypoints_eigen);
+
+    Eigen::Matrix<double, Eigen::Dynamic, 2> last_keypoints_eigen(last_keypoints.size(), 2);
+    for (size_t i = 0; i < last_keypoints.size(); ++i)
+    {
+        last_keypoints_eigen(i, 0) = last_keypoints[i].x;
+        last_keypoints_eigen(i, 1) = last_keypoints[i].y;
+    }
+    Eigen::Matrix<double, Eigen::Dynamic, 2> now_keypoints_eigen(now_keypoints.size(), 2);
+    for (size_t i = 0; i < now_keypoints.size(); ++i)
+    {
+        now_keypoints_eigen(i, 0) = now_keypoints[i].x;
+        now_keypoints_eigen(i, 1) = now_keypoints[i].y;
+    }
 
     double t1 = ros::Time::now().toSec();
-    if (last_keypoints.rows==3 && now_keypoints.rows==3)
+    if (last_keypoints.size()==3 && now_keypoints.size()==3)
     {
         std::tie(keypoints_3D_sq, lq_cost) = compute_keypoint3d(last_keypoints_eigen, now_keypoints_eigen, T_cw_last, T_cw_now, intrinsic_matrix, keypoints_3D_guess);
     } else
@@ -482,6 +553,7 @@ void triangulate(const cv::Mat& last_keypoints, const cv::Mat& now_keypoints, co
     }
     std::cout << "optimize time: " << ros::Time::now().toSec()-t1 << std::endl;
     std::cout << "keypoints_3d: " << keypoints_3D_sq << std::endl;
+    std::cout << "cost: " << lq_cost << std::endl;
     
     first_leastsq = true;
     if (lq_cost < lq_cost_min)

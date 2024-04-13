@@ -99,6 +99,7 @@ std::tuple<cv::Mat, cv::Mat, std::vector<cv::Mat>> YOLOv8Pose::showAndSave(const
 
     cv::Mat box(1, 4, CV_64F);
     std::vector<cv::Mat> points;
+    points.reserve(m_nkpts);
 
     for (size_t bi = 0; bi < imgsBatch.size(); bi++)
     {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(trail_detect_control)
+project(trail_detect)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
@@ -30,7 +30,7 @@ find_package(Ceres REQUIRED)
 
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES trail_detect_control
+ LIBRARIES trail_detect
  CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs visualization_msgs nav_msgs geometry_msgs cyber_msgs cv_bridge tf tf_conversions tf2_ros image_transport yolov8_pose
 )
 

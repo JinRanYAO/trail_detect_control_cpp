@@ -1,0 +1,31 @@
+topic:
+  image_topic: "/axis/image_raw/compressed"
+  imu_topic: "/imu/angular_velocity"
+  speed_feedback_topic: "/e100/speed_feedback"
+  steer_feedback_topic: "/e100/steer_feedback"
+
+  vis_topic: "/vis_result"
+  points_topic: "/points3d"
+  path_topic : "/rs_path"
+  rear_hitch_pos_topic: "/hitch_pos"
+  front_hitch_pixel_topic: "/hitch_pixel"
+
+  speed_topic: "/speed_cmd"
+  steer_topic: "/steer_cmd"
+
+control:
+  mode: 1
+  high_speed: 30
+  mid_speed: 30
+  low_speed: 30
+  kp_dist_steer: 2.0
+  kp_angle_steer: 0.1
+  dist_far: 5.0
+  dist_near: 2.0
+  dist_thres: 0.03
+  kp_pixel_steer: 0.28
+  pixel_thres: 20.0
+  weight_dist: 0.15
+  degree_to_steer_ratio: 160.0
+  wheel_base: 1.02
+  lq_cost_thres: 10.0

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>trail_detect_control</name>
+  <name>trail_detect</name>
   <version>0.0.0</version>
-  <description>The trail_detect_control package</description>
+  <description>The trail_detect package</description>
 
   <maintainer email="tong_yao@sjtu.edu.cn">tongyao</maintainer>
   <license>TODO</license>

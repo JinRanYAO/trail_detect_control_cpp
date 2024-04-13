@@ -19,13 +19,10 @@ KalmanFilter::KalmanFilter(const double& std_position, const double& std_velocit
 }
 
 std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::initiate(const Eigen::Vector2d& measurement, const double& w, const double& h){
-    Eigen::Vector2d mean_pos = measurement;
-    Eigen::Vector2d mean_vel = Eigen::Vector2d::Zero();
-    Eigen::Vector4d mean = Eigen::Vector4d(2 * ndim);
-    mean << mean_pos, mean_vel;
-    Eigen::Vector4d std_vec;
+    Eigen::Vector4d mean(measurement(0), measurement(1), 0, 0);
+    Eigen::Array4d std_vec;
     std_vec << 2 * std_weight_position * w, 2 * std_weight_position * h, 10 * std_weight_velocity * w, 10 * std_weight_velocity * h;
-    Eigen::Matrix4d covariance = std_vec.array().square().matrix().asDiagonal();
+    Eigen::Matrix4d covariance = std_vec.square().matrix().asDiagonal();
     return std::make_tuple(mean, covariance);
 }
 
@@ -33,10 +30,13 @@ std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::predict(const Eigen::
     Eigen::Vector2d std_pos(std_weight_position * w, std_weight_position * h);
     Eigen::Vector2d std_vel(std_weight_velocity * w, std_weight_velocity * h);
     Eigen::Vector4d std_vec;
-    std_vec << std_pos, std_vel;
-    Eigen::Matrix4d motion_cov = std_vec.array().square().matrix().asDiagonal();
+    std_vec << std_pos.array().square(), std_vel.array().square();
     Eigen::Vector4d pre_mean = motion_mat * mean;
-    Eigen::Matrix4d pre_covariance = motion_mat * covariance * motion_mat.transpose() + motion_cov;
+    Eigen::Matrix4d pre_covariance = motion_mat * covariance * motion_mat.transpose();
+    pre_covariance(0, 0) += std_vec(0);
+    pre_covariance(1, 1) += std_vec(1);
+    pre_covariance(2, 2) += std_vec(2);
+    pre_covariance(3, 3) += std_vec(3);
     return std::make_tuple(pre_mean, pre_covariance);
 }
 
@@ -52,7 +52,9 @@ std::tuple<Eigen::Vector2d, Eigen::Matrix2d> KalmanFilter::project(const Eigen::
     Eigen::Vector2d std(std_weight_mea * w, std_weight_mea * h);
     Eigen::Matrix2d innovation_cov = std.array().square().matrix().asDiagonal();
     Eigen::Vector2d pro_mean = update_mat * mean;
-    Eigen::Matrix2d pro_covariance = update_mat * covariance * update_mat.transpose() + innovation_cov;
+    Eigen::Matrix2d pro_covariance = update_mat * covariance * update_mat.transpose();
+    pro_covariance(0, 0) += innovation_cov(0, 0);
+    pro_covariance(1, 1) += innovation_cov(1, 1);
     return std::make_tuple(pro_mean, pro_covariance);
 }
 
@@ -60,8 +62,7 @@ std::tuple<Eigen::Vector4d, Eigen::Matrix4d> KalmanFilter::update(const Eigen::V
     Eigen::Vector2d pro_mean;
     Eigen::Matrix2d pro_cov;
     std::tie(pro_mean, pro_cov) = project(mean, covariance, w, h, mea_type);
-    Eigen::LLT<Eigen::MatrixXd> lltOfProjectedCov(pro_cov);
-    Eigen::Matrix<double, 4, 2> kalman_gain = covariance * update_mat.transpose() * lltOfProjectedCov.solve(Eigen::Matrix2d::Identity());
+    Eigen::Matrix<double, 4, 2> kalman_gain = covariance * update_mat.transpose() * pro_cov.ldlt().solve(Eigen::Matrix2d::Identity());
     Eigen::Vector2d innovation = measurement - pro_mean;
     Eigen::Vector4d new_mean = mean + kalman_gain * innovation;
     Eigen::Matrix4d new_covariance = covariance - kalman_gain * pro_cov * kalman_gain.transpose();
