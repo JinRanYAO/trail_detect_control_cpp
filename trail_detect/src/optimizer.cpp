@@ -191,17 +191,17 @@ std::tuple<Eigen::Matrix<double, Eigen::Dynamic, 3>, double> compute_keypoint3d(
         ceres::Problem problem;
         ceres::CostFunction* cost_function = Residuals3::Create(p1, p2, T1, T2, s, K);
         problem.AddParameterBlock(guess, 6);
-        problem.SetParameterLowerBound(guess, 0, -6);
-        problem.SetParameterUpperBound(guess, 0, 6);
-        problem.SetParameterLowerBound(guess, 1, -15);
+        problem.SetParameterLowerBound(guess, 0, -10);
+        problem.SetParameterUpperBound(guess, 0, 10);
+        problem.SetParameterLowerBound(guess, 1, -20);
         problem.SetParameterUpperBound(guess, 1, -2);
-        problem.SetParameterLowerBound(guess, 2, -6);
-        problem.SetParameterUpperBound(guess, 2, 6);
-        problem.SetParameterLowerBound(guess, 3, -15);
+        problem.SetParameterLowerBound(guess, 2, -10);
+        problem.SetParameterUpperBound(guess, 2, 10);
+        problem.SetParameterLowerBound(guess, 3, -20);
         problem.SetParameterUpperBound(guess, 3, -2);
-        problem.SetParameterLowerBound(guess, 4, -6);
-        problem.SetParameterUpperBound(guess, 4, 6);
-        problem.SetParameterLowerBound(guess, 5, -15);
+        problem.SetParameterLowerBound(guess, 4, -10);
+        problem.SetParameterUpperBound(guess, 4, 10);
+        problem.SetParameterLowerBound(guess, 5, -20);
         problem.SetParameterUpperBound(guess, 5, -2);
         problem.AddResidualBlock(cost_function, nullptr, guess);
 
@@ -237,13 +237,13 @@ std::tuple<Eigen::Matrix<double, Eigen::Dynamic, 3>, double> compute_keypoint3d(
         ceres::Problem problem;
         ceres::CostFunction* cost_function = Residuals2::Create(p1.topRows(n), p2.topRows(n), T1, T2, s, K);
         problem.AddParameterBlock(guess, 4);
-        problem.SetParameterLowerBound(guess, 0, -6);
-        problem.SetParameterUpperBound(guess, 0, 6);
-        problem.SetParameterLowerBound(guess, 1, -15);
+        problem.SetParameterLowerBound(guess, 0, -10);
+        problem.SetParameterUpperBound(guess, 0, 10);
+        problem.SetParameterLowerBound(guess, 1, -20);
         problem.SetParameterUpperBound(guess, 1, -2);
-        problem.SetParameterLowerBound(guess, 2, -6);
-        problem.SetParameterUpperBound(guess, 2, 6);
-        problem.SetParameterLowerBound(guess, 3, -15);
+        problem.SetParameterLowerBound(guess, 2, -10);
+        problem.SetParameterUpperBound(guess, 2, 10);
+        problem.SetParameterLowerBound(guess, 3, -20);
         problem.SetParameterUpperBound(guess, 3, -2);
         problem.AddResidualBlock(cost_function, nullptr, guess);
 

@@ -1,3 +1,5 @@
+#include <iostream>
+#include <fstream>
 #include <cmath>
 #include <ros/ros.h>
 #include <std_msgs/Int32MultiArray.h>
@@ -16,6 +18,7 @@ double weight_dist;
 double degree_to_steer_ratio;
 double wheel_base;
 double lq_cost_thres;
+bool stop_flag = false;
 
 double d_speed, d_brake;
 double d_steer_pos, d_steer_pixel, d_steer;
@@ -27,6 +30,8 @@ ros::Publisher speed_pub, steer_pub;
 
 std_msgs::Int32MultiArray speed_cmd_msg;
 std_msgs::Float64 steer_cmd_msg;
+
+std::ofstream steer_rec_file("/home/tongyao/trail_ws/steer.txt", std::ios::app);
 
 void posCallback(const std_msgs::Float64MultiArrayConstPtr &msg);
 void pixelCallback(const std_msgs::Float64MultiArrayConstPtr &msg);
@@ -102,19 +107,21 @@ void posCallback(const std_msgs::Float64MultiArrayConstPtr &msg){
     {
         d_speed = - mid_speed;
         d_steer = d_steer_pos * weight_dist + d_steer_pixel * (1 - weight_dist);
-        d_brake = 5.0;
+        d_brake = 0.0;
     }
     else
     {
         d_speed = - low_speed;
         d_steer = d_steer_pixel;
-        d_brake = 8.0;
+        d_brake = 0.0;
     }
 
-    if ((std::abs(pixel_error[0]) <= pixel_thres && std::abs(pixel_error[1]) <= pixel_thres) || (dist_error <= dist_thres))
+    // if ((std::abs(pixel_error[0]) <= pixel_thres && std::abs(pixel_error[1]) <= pixel_thres) || (dist_error <= dist_thres))
+    if ((std::abs(pixel_error[1]) <= pixel_thres) || (dist_error <= dist_thres))
     {
         d_speed = 0.0;
         d_brake = 10.0;
+        stop_flag = true;
     }
     else
     {
@@ -128,11 +135,18 @@ void posCallback(const std_msgs::Float64MultiArrayConstPtr &msg){
             d_steer = -6000.0;
         }        
     }
+    if (stop_flag == true)
+    {
+        d_speed = 0.0;
+        d_brake = 10.0;
+    }
+    
     
     speed_cmd_msg.data = {static_cast<int>(d_speed), static_cast<int>(d_brake)};
 //    speed_cmd_msg.data.emplace_back((int)d_speed);
 //    speed_cmd_msg.data.emplace_back((int)d_brake);
     steer_cmd_msg.data = d_steer;
+    steer_rec_file << d_steer << std::endl;
 
     speed_pub.publish(speed_cmd_msg);
     steer_pub.publish(steer_cmd_msg);

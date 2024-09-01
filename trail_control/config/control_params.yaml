@@ -23,8 +23,8 @@ control:
   dist_far: 5.0
   dist_near: 2.0
   dist_thres: 0.03
-  kp_pixel_steer: 0.28
-  pixel_thres: 20.0
+  kp_pixel_steer: 0.25
+  pixel_thres: 218.0
   weight_dist: 0.15
   degree_to_steer_ratio: 160.0
   wheel_base: 1.02

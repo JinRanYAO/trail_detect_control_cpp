@@ -198,8 +198,8 @@ int main(int argc, char** argv){
         }
     }
 
-    front_hitch_point.at<double>(0, 0) = 960.00000;
-    front_hitch_point.at<double>(0, 1) = 1025.25641;
+    front_hitch_point.at<double>(0, 0) = 960.0000;
+    front_hitch_point.at<double>(0, 1) = 1025.1795;
     cv::fisheye::undistortPoints(front_hitch_point, undistort_front_hitch, intrinsic_matrix_cv, distortion_coeffs_cv, cv::noArray(), intrinsic_matrix_cv);
 
     static tf2_ros::StaticTransformBroadcaster world_broadcaster;
@@ -360,6 +360,7 @@ void imageCallback(const sensor_msgs::CompressedImageConstPtr& img_msg){
         double d_x_error = d_x - ekf_pose_ptr->X(0);
         double d_y_error = d_y - ekf_pose_ptr->X(1);
         double d_yaw_error = gyaw - syaw;
+        // std::cout << "gyaw: " << gyaw << std::endl;
         d_error_msg.data.clear();
         // d_error_msg.data.push_back(d_x_error);
         // d_error_msg.data.push_back(d_y_error);
@@ -614,7 +615,7 @@ cv::Mat path_publish(const cv::Mat& image){
         std::vector<cv::Point3d> points_to_project({ cv::Point3d(base_link_point.point.x, base_link_point.point.y, base_link_point.point.z) });
         std::vector<cv::Point2d> projected_points;
         cv::fisheye::projectPoints(points_to_project, projected_points, rot_vec_cv, trans_vec_cv, intrinsic_matrix_cv, distortion_coeffs_cv);
-        cv::circle(image_copy, projected_points[0], 5, cv::Scalar(0, 0, 255), -1);
+        // cv::circle(image_copy, projected_points[0], 5, cv::Scalar(0, 0, 255), -1);
     }
     
     path_pub.publish(path);

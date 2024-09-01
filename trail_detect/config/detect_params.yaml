@@ -35,7 +35,7 @@ yolov8_pose:
   size_h: 384
   src_w: 1920
   src_h: 1080
-  conf_thresh: 0.25
+  conf_thresh: 0.3
   iou_thresh: 0.7
 
 kf_tracker:
