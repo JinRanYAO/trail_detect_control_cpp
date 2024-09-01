@@ -15,10 +15,14 @@ ROS, Eigen, Ceres, OpenCV, CUDA
   - config: parameters, including topic, control params
   - control.cpp: Compute the control signal using kinematic model and visual servo respectively, and output the hybrid control signal.
 # Video
-![Example1-vehicle](E:\开题-202302\端对端v2\工作进展-202311\ppt1x3.gif)
-![Example1-control](E:\开题-202302\端对端v2\工作进展-202311\ppt11x3.gif)
+<p align="center">
+    <img src="example1-vehicle.gif" width="500" alt="Example1-vehicle">
+    <img src="example1-control.gif" width="500" alt="Example1-control">
+</p>
 
-![Example2-vehicle](E:\开题-202302\端对端v2\工作进展-202311\ppt4x3.gif)
-![Example2-control](E:\开题-202302\端对端v2\工作进展-202311\ppt44x3.gif)
+<p align="center">
+    <img src="example2-vehicle.gif" width="500" alt="Example2-vehicle">
+    <img src="example2-control.gif" width="500" alt="Example2-control">
+</p>
 
 Note: The human driver only acts as a safety officer and does not participate in vehicle control.
