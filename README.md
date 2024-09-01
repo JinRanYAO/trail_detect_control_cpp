@@ -16,13 +16,13 @@ ROS, Eigen, Ceres, OpenCV, CUDA
   - control.cpp: Compute the control signal using kinematic model and visual servo respectively, and output the hybrid control signal.
 # Video
 <p align="center">
-    <img src="example1-vehicle.gif" width="500" alt="Example1-vehicle">
-    <img src="example1-control.gif" width="500" alt="Example1-control">
+    <img src="example1-vehicle.gif" width="400" alt="Example1-vehicle">
+    <img src="example1-control.gif" width="400" alt="Example1-control">
 </p>
 
 <p align="center">
-    <img src="example2-vehicle.gif" width="500" alt="Example2-vehicle">
-    <img src="example2-control.gif" width="500" alt="Example2-control">
+    <img src="example2-vehicle.gif" width="400" alt="Example2-vehicle">
+    <img src="example2-control.gif" width="400" alt="Example2-control">
 </p>
 
 Note: The human driver only acts as a safety officer and does not participate in vehicle control.
